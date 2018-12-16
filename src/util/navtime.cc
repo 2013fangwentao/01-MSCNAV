@@ -1,0 +1,256 @@
+/*
+** navtime.cc for MSCNAV in /media/fwt/学习/程序/myprogram/01-MSCNAV/src/util
+**
+** Made by little fang
+** Login   <fangwentao>
+** 
+** Time Class, Contian: GPSTIME,COMMONTIME,DOY and so on
+** 
+** Started on  Mon Dec 16 下午7:19:49 2018 little fang
+** Last update Mon Dec 16 下午11:34:58 2018 little fang
+*/
+#include "navtime.h"
+#include <string.h>
+namespace MSCNAV
+{
+
+NavTime::NavTime()
+{
+    NavTime(0, 0, 0, 0, 0, 0.0);
+}
+
+NavTime NavTime::operator=(const NavTime &time)
+{
+    *this = time;
+}
+
+NavTime::NavTime(int year, int month, int day, int hour, int minute, double second)
+    : year_(year),
+      month_(month),
+      day_(day),
+      hour_(hour),
+      minute_(minute),
+      second_(second)
+{
+    Commontime2Gpstime();
+    Commontime2Doytime();
+}
+
+NavTime::NavTime(int year, int doy, double second_of_day)
+    : year_(year),
+      doy_(doy),
+      second_of_day_(second_of_day)
+{
+    Doytime2Commontime();
+    Commontime2Gpstime();
+}
+
+NavTime::NavTime(int GPSWeek, double second_of_week)
+    : gpsweek_(GPSWeek),
+      second_of_week_(second_of_week)
+{
+    Gpstime2Commontime();
+    Commontime2Doytime();
+}
+
+void NavTime::Gpstime2Commontime()
+{
+    GPSTime2ModifyJulianDay();
+    ModifyJulianDay2Commontime();
+}
+
+void NavTime::Commontime2Gpstime()
+{
+    Commontime2ModifyJulianDay();
+    ModifyJulianDay2GPSTime();
+}
+
+void NavTime::Commontime2Doytime()
+{
+    NavTime temp_time1(year_, month_, day_, 0, 0, 0.0);
+    NavTime temp_time2(year_, 1, 1, 0, 0, 0.0);
+    doy_ = temp_time1.MJD().day - temp_time2.MJD().day + 1;
+    second_of_day_ = hour_ * 3600 + minute_ * 60 + second_;
+}
+
+void NavTime::Doytime2Commontime()
+{
+    NavTime temp_time(year_,1,1,0,0,0.0);
+    mjd_.day = temp_time.MJD().day + doy_ -1;
+    mjd_.tod.sn = second_of_day_;
+    mjd_.tod.tos = second_of_day_ - static_cast<int>(second_of_day_);
+    ModifyJulianDay2Commontime();
+}
+
+/**
+ * @brief  Convert Time to Print String
+ * @note   
+ * @param  &format: "%04d-%02d-%02d %02d:%02d:%.1f", "%d %.1f", "%04d %03d %.1f"
+ * @param  time_type: COMMONTIME, GPSTIME, DOYTIME
+ * @retval Time string
+ */
+std::string NavTime::Time2String(const std::string &format = "%04d-%02d-%02d %02d:%02d:%.1f", TimeType time_type = COMMONTIME) const
+{
+    char temp_time_str[256];
+    memset(temp_time_str, 0x0, sizeof(temp_time_str));
+    if (time_type == COMMONTIME)
+    {
+        sprintf(temp_time_str, format.c_str(), year_, month_, day_, hour_, minute_, second_);
+    }
+    else if (time_type == GPSTIME)
+    {
+        sprintf(temp_time_str, format.c_str(), gpsweek_, second_of_week_);
+    }
+    else
+    {
+        sprintf(temp_time_str, format.c_str(), year_, doy_, second_of_day_);
+    }
+    std::string temp_result = temp_time_str;
+    return temp_result;
+}
+
+int NavTime::GpsWeek() const
+{
+    return gpsweek_;
+}
+
+int NavTime::Hour() const
+{
+    return hour_;
+}
+
+int NavTime::Minute() const
+{
+    return minute_;
+}
+
+int NavTime::Month() const
+{
+    return month_;
+}
+
+int NavTime::Year() const
+{
+    return year_;
+}
+
+int NavTime::Doy() const
+{
+    return doy_;
+}
+
+int NavTime::Day() const
+{
+    return day_;
+}
+
+double NavTime::Second() const
+{
+    return second_;
+}
+
+double NavTime::SecondOfDay() const
+{
+    return second_of_day_;
+}
+
+double NavTime::SecondOfWeek() const
+{
+    return second_of_week_;
+}
+
+MODIFYJULIANDAY NavTime::MJD() const
+{
+    return mjd_;
+}
+
+void NavTime::GPSTime2ModifyJulianDay()
+{
+    mjd_.tod.sn = int(second_of_week_);
+    mjd_.tod.tos = second_of_week_ - mjd_.tod.sn;
+    int temp_day = mjd_.tod.sn / 86400;
+    mjd_.day = gpsweek_ * 7 + temp_day + 44244;
+    mjd_.tod.sn -= temp_day * 86400;
+}
+
+void NavTime::Commontime2ModifyJulianDay()
+{
+    int y = year_;
+    int m = month_;
+    int temp;
+    if (y >= 80 && y < 100)
+    {
+        y += 1900;
+    }
+    else if (y < 80)
+    {
+        y += 2000;
+    }
+    if (m <= 2)
+    {
+        y -= 1;
+        m += 12;
+    }
+    temp = static_cast<int>(365.25 * y);
+    temp += static_cast<int>(30.6001 * (m + 1));
+    temp += day_;
+    temp -= 679019;
+
+    mjd_.day = temp;
+    mjd_.tod.sn = hour_ * 3600 + minute_ * 60 + static_cast<int>(second_);
+    mjd_.tod.tos = second_ - static_cast<int>(second_);
+}
+
+void NavTime::ModifyJulianDay2GPSTime()
+{
+    int gd;
+    MODIFYJULIANDAY mjd;
+
+    gd = mjd_.day - 44244;
+
+    if (gd < 0)
+    {
+        mjd.tod.tos = 1 - mjd_.tod.tos;
+        mjd.tod.sn = 86400 - mjd_.tod.sn - 1;
+        mjd.day = 44244 - mjd_.day - 1;
+
+        if (mjd.tod.tos >= 1.0)
+        {
+            mjd.tod.tos -= 1.0;
+            mjd.tod.sn += 1;
+        }
+        if (mjd.tod.sn >= 86400)
+        {
+            mjd.tod.sn -= 86400;
+            mjd.day += 1;
+        }
+    }
+    else
+    {
+        mjd.day = mjd_.day - 44244;
+        mjd.tod.sn = mjd_.tod.sn;
+        mjd.tod.tos = mjd_.tod.tos;
+    }
+
+    gpsweek_ = mjd.day / 7;
+    second_of_week_ = (mjd.day % 7) * 86400 + mjd.tod.sn + mjd.tod.tos;
+}
+
+void NavTime::ModifyJulianDay2Commontime()
+{
+    int a, b, c, d, e;
+    a = mjd_.day + 2400001;
+    b = a + 1537;
+    c = static_cast<int>((b - 122.1) / 365.25);
+    d = static_cast<int>(365.25 * c);
+    e = static_cast<int>((b - d) / 30.6001);
+
+    day_ = b - d - static_cast<int>(30.6001 * e);
+    month_ = e - 1 - 12 * (e / 14);
+    year_ = c - 4715 - ((7 + month_) / 10);
+    hour_ = (int)(mjd_.tod.sn / 3600);
+    minute_ = (mjd_.tod.sn % 3600) / 60;
+    second_ = (mjd_.tod.sn % 3600) % 60 + mjd_.tod.tos;
+}
+
+} // namespace MSCNAV
