@@ -5,7 +5,7 @@
 ** Login   <fangwentao>
 ** basic struct of time
 ** Started on  Mon Dec 16 下午7:10:38 2018 little fang
-** Last update Mon Dec 16 下午11:39:02 2018 little fang
+** Last update Tue Dec 17 下午1:12:44 2018 little fang
 */
 
 #ifndef NAVTIME_H_
@@ -59,13 +59,15 @@ class NavTime
     NavTime operator=(const NavTime &time);
     NavTime operator+(double second);
     NavTime operator-(double second);
-    bool  operator<(const NavTime& time);
-    bool  operator>(const NavTime& time);
-    bool  operator<=(const NavTime& time);
-    bool  operator>=(const NavTime& time);
-    ~NavTime();
+    bool operator<(const NavTime &time) const;
+    bool operator>(const NavTime &time) const;
+    bool operator<=(const NavTime &time) const;
+    bool operator>=(const NavTime &time) const;
+    bool operator==(const NavTime &time) const;
+    ~NavTime(){}
 
   public:
+    static NavTime NowTime();
     std::string Time2String(const std::string &format = "%04d-%02d-%02d %02d:%02d:%.1f", TimeType time_type = COMMONTIME) const;
     int Year() const;
     int Month() const;
@@ -78,6 +80,7 @@ class NavTime
     int Doy() const;
     int GpsWeek() const;
     MODIFYJULIANDAY MJD() const;
+
   public:
     using Ptr = std::shared_ptr<NavTime>;
 

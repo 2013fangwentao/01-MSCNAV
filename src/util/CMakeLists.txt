@@ -1,0 +1,4 @@
+cmake_minimum_required( VERSION 2.8)
+PROJECT(Util)
+AUX_SOURCE_DIRECTORY(./ CCFILES)
+add_library(${PROJECT_NAME} SHARED ${CCFILES})

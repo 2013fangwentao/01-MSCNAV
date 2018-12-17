@@ -7,10 +7,11 @@
 ** Time Class, Contian: GPSTIME,COMMONTIME,DOY and so on
 ** 
 ** Started on  Mon Dec 16 下午7:19:49 2018 little fang
-** Last update Mon Dec 16 下午11:34:58 2018 little fang
+** Last update Tue Dec 17 下午1:25:49 2018 little fang
 */
 #include "navtime.h"
 #include <string.h>
+#include <ctime>
 namespace MSCNAV
 {
 
@@ -67,16 +68,24 @@ void NavTime::Commontime2Gpstime()
 
 void NavTime::Commontime2Doytime()
 {
-    NavTime temp_time1(year_, month_, day_, 0, 0, 0.0);
-    NavTime temp_time2(year_, 1, 1, 0, 0, 0.0);
-    doy_ = temp_time1.MJD().day - temp_time2.MJD().day + 1;
+    Commontime2ModifyJulianDay();
+    MODIFYJULIANDAY mjdtemp = mjd_;
+    month_ =1;
+    day_ =1;
+    hour_ =0;
+    minute_ =0;
+    second_ =0;
+    Commontime2ModifyJulianDay();
+    doy_ = mjdtemp.day - mjd_.day + 1;
+    mjd_ = mjdtemp;
+    ModifyJulianDay2Commontime();
     second_of_day_ = hour_ * 3600 + minute_ * 60 + second_;
 }
 
 void NavTime::Doytime2Commontime()
 {
-    NavTime temp_time(year_,1,1,0,0,0.0);
-    mjd_.day = temp_time.MJD().day + doy_ -1;
+    NavTime temp_time(year_, 1, 1, 0, 0, 0.0);
+    mjd_.day = temp_time.MJD().day + doy_ - 1;
     mjd_.tod.sn = second_of_day_;
     mjd_.tod.tos = second_of_day_ - static_cast<int>(second_of_day_);
     ModifyJulianDay2Commontime();
@@ -89,7 +98,7 @@ void NavTime::Doytime2Commontime()
  * @param  time_type: COMMONTIME, GPSTIME, DOYTIME
  * @retval Time string
  */
-std::string NavTime::Time2String(const std::string &format = "%04d-%02d-%02d %02d:%02d:%.1f", TimeType time_type = COMMONTIME) const
+std::string NavTime::Time2String(const std::string &format , TimeType time_type ) const
 {
     char temp_time_str[256];
     memset(temp_time_str, 0x0, sizeof(temp_time_str));
@@ -107,6 +116,157 @@ std::string NavTime::Time2String(const std::string &format = "%04d-%02d-%02d %02
     }
     std::string temp_result = temp_time_str;
     return temp_result;
+}
+/**
+ * @brief  operator + for Navtime and seconds
+ * @note   
+ * @param  second: 
+ * @retval NavTime add seconds
+ */
+NavTime NavTime::operator+(double second)
+{
+    // second_of_week_ += second;
+    // int temp_week = (int)second_of_week_/MAXSECONDOFWEEK;
+    // second_of_week_-=temp_week * MAXSECONDOFWEEK;
+    // gpsweek_ += temp_week;
+    mjd_.tod.sn += static_cast<int>(second);
+    mjd_.tod.tos += second - static_cast<int>(second);
+    while (mjd_.tod.tos > 1)
+    {
+        mjd_.tod.sn += 1;
+        mjd_.tod.tos -= 1;
+    }
+    while (mjd_.tod.sn > MAXSECONDOFDAY)
+    {
+        mjd_.day++;
+        mjd_.tod.sn -= MAXSECONDOFDAY;
+    }
+    ModifyJulianDay2Commontime();
+    ModifyJulianDay2GPSTime();
+    Commontime2Doytime();
+}
+/**
+ * @brief  operator - for Navtime and seconds
+ * @note   
+ * @param  second: 
+ * @retval 
+ */
+NavTime NavTime::operator-(double second)
+{
+    mjd_.tod.tos -= second - static_cast<int>(second);
+    while (mjd_.tod.tos < 0)
+    {
+        mjd_.tod.tos += 1.0;
+        mjd_.tod.sn -= 1;
+    }
+    mjd_.tod.sn -= static_cast<int>(second);
+
+    while (mjd_.tod.sn < 0.0)
+    {
+        mjd_.day--;
+        mjd_.tod.sn += 86400.0;
+    }
+    ModifyJulianDay2Commontime();
+    ModifyJulianDay2GPSTime();
+    Commontime2Doytime();
+}
+
+/**
+ * @brief  compare two Navtime with <
+ * @note   
+ * @param  &time: 
+ * @retval bool, if this < time return true
+ */
+bool NavTime::operator<(const NavTime &time) const
+{
+    if (gpsweek_ < time.gpsweek_)
+    {
+        return true;
+    }
+    else if (gpsweek_ == time.gpsweek_ && second_of_week_ < time.second_of_week_)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+/**
+ * @brief  compare two Navtime with >
+ * @note   
+ * @param  &time: 
+ * @retval bool, if this > time return true
+ */
+bool NavTime::operator>(const NavTime &time) const
+{
+    if (gpsweek_ > time.gpsweek_)
+    {
+        return true;
+    }
+    else if (gpsweek_ == time.gpsweek_ && second_of_week_ > time.second_of_week_)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+/**
+ * @brief  compare two Navtime with >
+ * @note   
+ * @param  &time: 
+ * @retval bool, if this == time return true
+ */
+bool NavTime::operator==(const NavTime &time) const
+{
+
+    if (gpsweek_ == time.gpsweek_ && second_of_week_ == time.second_of_week_)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+/**
+ * @brief  compare two Navtime with >=
+ * @note   
+ * @param  time: 
+ * @retval bool, if this >= time return true
+ */
+bool NavTime::operator>=(const NavTime& time) const
+{
+    return (*this>time||*this==time);
+}
+
+/**
+ * @brief  compare two Navtime with <=
+ * @note   
+ * @param  time: 
+ * @retval bool, if this <= time return true
+ */
+bool NavTime::operator<=(const NavTime& time) const
+{
+    return (*this<time||*this==time);
+}
+
+/**
+ * @brief  
+ * @note   
+ * @retval  NowTime with Navtime format
+ */
+NavTime NavTime::NowTime()
+{
+	time_t now_time;
+	time(&now_time);
+	struct tm* time2 = localtime(&now_time);
+    NavTime time(time2->tm_year+1900,time2->tm_mon + 1,time2->tm_mday,time2->tm_hour,time2->tm_min,time2->tm_sec);
+    return time;
 }
 
 int NavTime::GpsWeek() const
