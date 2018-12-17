@@ -6,16 +6,32 @@
 ** The Basic Struct of Program
 **
 ** Started on  Mon Dec 16 下午3:54:58 2018 little fang
-** Last update Mon Dec 16 下午7:05:16 2018 little fang
+** Last update Tue Dec 17 下午3:16:18 2018 little fang
 */
 #ifndef NAVSTRUCT_H_
 #define NAVSTRUCT_H_
 #include "stdio.h"
 #include <string.h>
 #include <memory>
+#include <chrono>
+#include <thread>
+
 
 namespace MSCNAV
 {
+
+inline void NavSleep(int _milliseconds)
+{
+    std::chrono::milliseconds msecond(_milliseconds);
+    std::this_thread::sleep_for(msecond);
+}
+
+inline void NavExit(const std::string& info="Exitting...")
+{
+    printf("%s\n",info.c_str());
+    NavSleep(1000);
+    exit(0);
+}
 
 struct IMUDATA
 {

@@ -7,13 +7,15 @@
 ** Time Class, Contian: GPSTIME,COMMONTIME,DOY and so on
 ** 
 ** Started on  Mon Dec 16 下午7:19:49 2018 little fang
-** Last update Tue Dec 17 下午1:25:49 2018 little fang
+** Last update Tue Dec 17 下午2:59:54 2018 little fang
 */
 #include "navtime.h"
 #include <string.h>
 #include <ctime>
 namespace MSCNAV
 {
+const double NavTime::MAXSECONDOFDAY = 86400.0;
+const double NavTime::MAXSECONDOFWEEK = 86400.0 * 7;
 
 NavTime::NavTime()
 {
@@ -22,7 +24,17 @@ NavTime::NavTime()
 
 NavTime NavTime::operator=(const NavTime &time)
 {
-    *this = time;
+    year_ = time.year_;
+    month_ = time.month_;
+    day_ = time.day_;
+    hour_ = time.hour_;
+    minute_ = time.minute_;
+    second_ = time.second_;
+    gpsweek_ = time.gpsweek_;
+    second_of_day_ = time.second_of_day_;
+    second_of_week_ = time.second_of_week_;
+    doy_ = time.doy_;
+    mjd_ = time.mjd_;
 }
 
 NavTime::NavTime(int year, int month, int day, int hour, int minute, double second)
@@ -70,11 +82,11 @@ void NavTime::Commontime2Doytime()
 {
     Commontime2ModifyJulianDay();
     MODIFYJULIANDAY mjdtemp = mjd_;
-    month_ =1;
-    day_ =1;
-    hour_ =0;
-    minute_ =0;
-    second_ =0;
+    month_ = 1;
+    day_ = 1;
+    hour_ = 0;
+    minute_ = 0;
+    second_ = 0;
     Commontime2ModifyJulianDay();
     doy_ = mjdtemp.day - mjd_.day + 1;
     mjd_ = mjdtemp;
@@ -98,7 +110,7 @@ void NavTime::Doytime2Commontime()
  * @param  time_type: COMMONTIME, GPSTIME, DOYTIME
  * @retval Time string
  */
-std::string NavTime::Time2String(const std::string &format , TimeType time_type ) const
+std::string NavTime::Time2String(const std::string &format, TimeType time_type) const
 {
     char temp_time_str[256];
     memset(temp_time_str, 0x0, sizeof(temp_time_str));
@@ -118,12 +130,12 @@ std::string NavTime::Time2String(const std::string &format , TimeType time_type 
     return temp_result;
 }
 /**
- * @brief  operator + for Navtime and seconds
+ * @brief  operator += for Navtime and seconds
  * @note   
  * @param  second: 
  * @retval NavTime add seconds
  */
-NavTime NavTime::operator+(double second)
+void NavTime::operator+=(double second)
 {
     // second_of_week_ += second;
     // int temp_week = (int)second_of_week_/MAXSECONDOFWEEK;
@@ -146,12 +158,12 @@ NavTime NavTime::operator+(double second)
     Commontime2Doytime();
 }
 /**
- * @brief  operator - for Navtime and seconds
+ * @brief  operator -= for Navtime and seconds
  * @note   
  * @param  second: 
  * @retval 
  */
-NavTime NavTime::operator-(double second)
+void NavTime::operator-=(double second)
 {
     mjd_.tod.tos -= second - static_cast<int>(second);
     while (mjd_.tod.tos < 0)
@@ -169,6 +181,40 @@ NavTime NavTime::operator-(double second)
     ModifyJulianDay2Commontime();
     ModifyJulianDay2GPSTime();
     Commontime2Doytime();
+}
+
+/**
+ * @brief  operator + for Navtime and seconds
+ * @note   
+ * @param  second: 
+ * @retval 
+ */
+NavTime NavTime::operator+(double second)
+{
+    NavTime result = *this;
+    result += second;
+    return result;
+}
+NavTime NavTime::operator+(int second)
+{
+    return operator+((double)second);
+}
+
+/**
+ * @brief  operator - for Navtime and seconds
+ * @note   
+ * @param  second: 
+ * @retval 
+ */
+NavTime NavTime::operator-(double second)
+{
+    NavTime result = *this;
+    result -= second;
+    return result;
+}
+NavTime NavTime::operator-(int second)
+{
+    return operator-((double)second);
 }
 
 /**
@@ -239,9 +285,9 @@ bool NavTime::operator==(const NavTime &time) const
  * @param  time: 
  * @retval bool, if this >= time return true
  */
-bool NavTime::operator>=(const NavTime& time) const
+bool NavTime::operator>=(const NavTime &time) const
 {
-    return (*this>time||*this==time);
+    return (*this > time || *this == time);
 }
 
 /**
@@ -250,9 +296,9 @@ bool NavTime::operator>=(const NavTime& time) const
  * @param  time: 
  * @retval bool, if this <= time return true
  */
-bool NavTime::operator<=(const NavTime& time) const
+bool NavTime::operator<=(const NavTime &time) const
 {
-    return (*this<time||*this==time);
+    return (*this < time || *this == time);
 }
 
 /**
@@ -262,10 +308,10 @@ bool NavTime::operator<=(const NavTime& time) const
  */
 NavTime NavTime::NowTime()
 {
-	time_t now_time;
-	time(&now_time);
-	struct tm* time2 = localtime(&now_time);
-    NavTime time(time2->tm_year+1900,time2->tm_mon + 1,time2->tm_mday,time2->tm_hour,time2->tm_min,time2->tm_sec);
+    time_t now_time;
+    time(&now_time);
+    struct tm *time2 = localtime(&now_time);
+    NavTime time(time2->tm_year + 1900, time2->tm_mon + 1, time2->tm_mday, time2->tm_hour, time2->tm_min, time2->tm_sec);
     return time;
 }
 
