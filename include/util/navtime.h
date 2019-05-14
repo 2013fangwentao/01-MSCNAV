@@ -5,18 +5,21 @@
 ** Login   <fangwentao>
 ** basic struct of time
 ** Started on  Mon Dec 16 下午7:10:38 2018 little fang
-** Last update Tue Dec 17 下午3:44:03 2018 little fang
+** Last update Wed May 14 下午6:44:45 2019 little fang
 */
 
 #ifndef NAVTIME_H_
 #define NAVTIME_H_
-#include <time.h>
 #include <chrono>
 #include <memory>
 #include <string>
+#include <time.h>
 
-namespace MSCNAV
+namespace mscnav
 {
+namespace utiltool
+{
+
 struct PRECISETIME
 {
   PRECISETIME()
@@ -30,10 +33,7 @@ struct PRECISETIME
 };
 struct MODIFYJULIANDAY
 {
-  MODIFYJULIANDAY()
-  {
-    day = 0;
-  }
+  MODIFYJULIANDAY() { day = 0; }
 
   long day;
   PRECISETIME tod;
@@ -113,7 +113,7 @@ private:
   int doy_;
   MODIFYJULIANDAY mjd_;
 };
-
-} // namespace MSCNAV
+} // namespace utiltool
+} // namespace mscnav
 
 #endif /* !NAVTIME_H_ */
