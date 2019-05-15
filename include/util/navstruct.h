@@ -6,7 +6,7 @@
 ** The Basic Struct of Program
 **
 ** Started on  Mon Dec 16 下午3:54:58 2018 little fang
-** Last update Wed May 14 下午6:49:44 2019 little fang
+** Last update Wed May 14 下午7:32:48 2019 little fang
 */
 #ifndef NAVSTRUCT_H_
 #define NAVSTRUCT_H_
