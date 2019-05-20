@@ -5,13 +5,13 @@
 ** Login   <fangwentao>
 **
 ** Started on  Tue Dec 17 下午3:03:16 2018 little fang
-** Last update Thu May 15 下午2:57:46 2019 little fang
+** Last update Fri May 16 下午9:30:50 2019 little fang
 */
 
 #include "filter/filter.h"
 #include "util/navconfig.hpp"
 #include "util/navlog.hpp"
-#include "util/navstruct.h"
+#include "util/navbase.h"
 #include <iomanip>
 
 namespace mscnav

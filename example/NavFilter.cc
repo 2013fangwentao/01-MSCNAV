@@ -5,7 +5,7 @@
 ** Login   <fangwentao>
 **
 ** Started on  Tue May 14 下午9:29:43 2019 little fang
-** Last update Thu May 15 下午2:54:14 2019 little fang
+** Last update Fri May 16 下午8:30:55 2019 little fang
 */
 #include "filter/filter.h"
 #include "util/navlog.hpp"
@@ -34,7 +34,7 @@ int main(int argc, const char *argv[])
   Eigen::MatrixXd Z(4, 1);
   Z << 0.3, 0.3, 0.4, 0.5;
   std::cout << Z << std::endl;
-  NavTime time(2019, 1, 1, 0, 0, 0.0);
+  NavTime time=NavTime::NowTime();
   while (index < 10)
   {
     filter.TimeUpdate(Phi, Q, time);
