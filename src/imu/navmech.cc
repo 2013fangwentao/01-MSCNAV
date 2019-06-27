@@ -5,7 +5,7 @@
 ** Login   <fangwentao>
 **
 ** Started on  Thu May 16 下午8:33:16 2019 little fang
-** Last update Tue May 20 下午9:07:35 2019 little fang
+** Last update Tue Jun 17 上午10:02:17 2019 little fang
 */
 
 #include "imu/navmech.h"
@@ -68,7 +68,7 @@ Eigen::Vector3d NavMech::MechPositionUpdate(const NAVINFO &pre_nav_info, double 
 }
 
 /**
- * @brief  获取状态转移矩阵,排列顺序为 0 位置(北东地) 3 速度 6 姿态角误差 9 陀螺领偏 12 加速度计领偏 15 陀螺比例因子 18 加速度计比例因子
+ * @brief  获取状态转移矩阵,排列顺序为 0 位置(北东地) 3 速度 6 姿态角误差 9 陀螺零偏 12 加速度计零偏 15 陀螺比例因子 18 加速度计比例因子
  * @note
  * @param  &pre_imu_data:
  * @param  &curr_imu_data:
@@ -81,16 +81,16 @@ Eigen::MatrixXd NavMech::MechTransferMat(const IMUDATA &pre_imu_data, const IMUD
   using Eigen::MatrixXd;
   using Eigen::Vector3d;
 
-  utiltool::ConfigInfo::Ptr getconfig = utiltool::ConfigInfo::GetInstance();
-  getconfig->get<int>("filter_debug_cov_file");
+  utiltool::ConfigInfo::Ptr config = utiltool::ConfigInfo::GetInstance();
 
   static int rows = 18 + scale_of_acce_ + scale_of_gyro_, cols = rows;
-  static int corr_time_of_gyro_bias = getconfig->get<int>("corr_time_of_gyro_bias");
-  static int corr_time_of_acce_bias = getconfig->get<int>("corr_time_of_acce_bias");
+  static int corr_time_of_gyro_bias = config->get<int>("corr_time_of_gyro_bias");
+  static int corr_time_of_acce_bias = config->get<int>("corr_time_of_acce_bias");
+  static int corr_time_of_gyro_scale = 0, corr_time_of_acce_scale = 0;
   if (scale_of_gyro_ == 3)
-    static int corr_time_of_gyro_scale = getconfig->get<int>("corr_time_of_gyro_scale");
+    corr_time_of_gyro_scale = config->get<int>("corr_time_of_gyro_scale");
   if (scale_of_acce_ == 3)
-    static int corr_time_of_acce_scale = getconfig->get<int>("corr_time_of_acce_scale");
+    corr_time_of_acce_scale = config->get<int>("corr_time_of_acce_scale");
 
   auto &pos = nav_info.nav_pos_;
   auto &vel = nav_info.nav_vel_;
@@ -101,9 +101,9 @@ Eigen::MatrixXd NavMech::MechTransferMat(const IMUDATA &pre_imu_data, const IMUD
   auto Cbn = nav_info.nav_quat_.toRotationMatrix();
   Vector3d fb(curr_imu_data.acce_);
   Vector3d wb(curr_imu_data.gyro_);
-
+  double dt = curr_imu_data.time_of_week_ - pre_imu_data.time_of_week_;
+  
   MatrixXd F = MatrixXd::Zero(rows, cols);
-  Matrix3d temp;
 
   //位置对应的误差方程
   F.block<3, 3>(0, 0) << -vel(2) / (Rm + pos(2)), 0, pos(0) / (Rm + pos(0)), pos(1) * tan(pos(0)) / (Rm + pos(0)),
@@ -111,12 +111,29 @@ Eigen::MatrixXd NavMech::MechTransferMat(const IMUDATA &pre_imu_data, const IMUD
   F.block<3, 3>(0, 3) = Matrix3d::Identity();
 
   //速度对应的误差方程
+  // TODO 速度项对应的状态矩阵系数需要细化
   F.block<3, 3>(3, 3) = utiltool::askew(2 * wien + wenn) * -1.0;
   F.block<3, 3>(3, 6) = utiltool::askew(Cbn * fb);
   F.block<3, 3>(3, 12) = Cbn;
   if (scale_of_acce_ == 3)
+  {
     F.block<3, 3>(3, 18) = Cbn * (fb.diagonal());
-  
+    F.block<3, 3>(18, 18) = Matrix3d::Identity() * (-1 / corr_time_of_acce_scale);
+  }
+  //姿态对应的误差方程
+  F.block<3, 3>(6, 6) = -1 * utiltool::askew(wien + wenn);
+  F.block<3, 3>(3, 9) = -Cbn;
+  if(scale_of_gyro_ == 3)
+  {
+    F.block<3, 3>(3, 15) = -Cbn * (wb.diagonal());
+    F.block<3, 3>(15, 15) = Matrix3d::Identity() * (-1 / corr_time_of_gyro_scale);
+  }
 
+  //IMU参数
+  F.block<3, 3>(9, 9) = Matrix3d::Identity() * (-1 / corr_time_of_gyro_bias);
+  F.block<3, 3>(12, 12) = Matrix3d::Identity() * (-1 / corr_time_of_acce_bias);
+
+  return MatrixXd::Identity(rows, cols) + F * dt;
 }
+
 } // namespace mscnav
