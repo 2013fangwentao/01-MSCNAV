@@ -1,3 +1,4 @@
+本项目已经更新到mscnav上，请参考 https://github.com/2013fangwentao/mscnav
 # 01-MSCNAV
 Multi-Sensors Combined Navigation Program(GPS, IMU, Odo,Vision and so on)
 # 1.description
